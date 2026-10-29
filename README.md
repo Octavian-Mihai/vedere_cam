@@ -60,6 +60,6 @@ xcodebuild test -project VedereCam.xcodeproj -scheme VedereCam \
 
 ## Credits and licensing
 
-The bundled LUTs come from the "No Fusion LUTs" pack. According to the pack's credit note, they are adapted from LUTs by Yahia Angelo, Rossandhisjpegs and Stephen Morais. No license text came with the pack, so confirm you may redistribute them before publishing the app or making the repo public. See `VedereCam/Resources/LUTs/CREDITS.txt`.
+The bundled LUTs come from the No Fusion LUTs pack, which credits Yahia Angelo, Rossandhisjpegs and Stephen Morais as the sources they were adapted from. The pack includes no license, so the LUTs are not covered by this repo's terms. See [`CREDITS.txt`](VedereCam/Resources/LUTs/CREDITS.txt).
 
-Preset names follow the LUT file names, and the descriptions are inspired-by summaries based on measuring each LUT. They are not exact film copies.
+Look names follow the LUT file names. The descriptions are film-inspired and based on measuring each LUT, not exact film matches.
