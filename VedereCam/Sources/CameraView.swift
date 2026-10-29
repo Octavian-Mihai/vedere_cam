@@ -10,7 +10,7 @@ struct CameraView: View {
             ZStack {
                 Color.black
                 if let cg = camera.previewImage {
-                    Image(decorative: cg, scale: 1).resizable().scaledToFit()
+                    Image(decorative: cg, scale: 1).resizable().scaledToFill()
                 } else {
                     Text("Camera preview unavailable").foregroundStyle(.secondary)
                 }
@@ -23,6 +23,7 @@ struct CameraView: View {
                         .font(.caption2).foregroundStyle(.white.opacity(0.7)).padding(.bottom, 6)
                 }
             }
+            .aspectRatio(3.0 / 4.0, contentMode: .fit)
             .clipped()
 
             // Presets sit directly under the camera view.
@@ -38,6 +39,8 @@ struct CameraView: View {
             .padding(.vertical, 10)
             .background(Color.black)
 
+            Spacer(minLength: 0)
+
             // Filter editor and shutter live in the bottom bar.
             HStack {
                 Button { showEditor = true } label: {
@@ -51,13 +54,14 @@ struct CameraView: View {
                         .background(Circle().fill(.white.opacity(0.9))).frame(width: 72, height: 72)
                 }
                 Spacer()
-                Color.clear.frame(width: 60)
+                Color.clear.frame(width: 60, height: 72)
             }
             .padding(.horizontal, 24)
             .padding(.top, 8)
             .padding(.bottom, 12)
             .background(Color.black)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .onAppear { sync(); camera.start() }
