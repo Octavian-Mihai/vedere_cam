@@ -26,6 +26,17 @@ struct CameraView: View {
             .aspectRatio(3.0 / 4.0, contentMode: .fit)
             .clipped()
 
+            // Quick strength slider: blends the look with the untouched image.
+            HStack(spacing: 10) {
+                Text("Strength").font(.caption).foregroundStyle(.secondary)
+                Slider(value: strengthBinding, in: 0...1).tint(.yellow)
+                Text("\(Int(model.selectedLook.strength * 100))%")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 40, alignment: .trailing)
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .background(Color.black)
+
             // Presets sit directly under the camera view.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
@@ -70,6 +81,11 @@ struct CameraView: View {
         .onChange(of: model.looks) { _ in sync() }
         .onChange(of: model.options) { _ in sync() }
         .sheet(isPresented: $showEditor) { LookEditor().environmentObject(model) }
+    }
+
+    private var strengthBinding: Binding<Double> {
+        Binding(get: { model.selectedLook.strength },
+                set: { var l = model.selectedLook; l.strength = $0; model.selectedLook = l })
     }
 
     private func sync() {

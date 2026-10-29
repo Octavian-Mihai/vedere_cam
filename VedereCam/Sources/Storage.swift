@@ -104,6 +104,9 @@ enum Storage {
 
     // MARK: Re-render (non-destructive: writes a new derived file, never touches the original)
 
+    /// Re-applies a look. With a RAW original the rendered file (and sidecar) is replaced in place, since the
+    /// original can always regenerate it; without one, a new copy is written so the only image is never overwritten.
+    /// Returns the id of the record that now holds the result.
     @discardableResult
     static func rerender(_ record: PhotoRecord, look: Look, format: OutputOptions.RenderedFormat) throws -> String? {
         guard let source = record.rawURL ?? record.renderedURL else { return nil }
@@ -114,10 +117,15 @@ enum Storage {
             base = CIImage(contentsOf: source)
         }
         guard let base else { return nil }
-        let id = newID()
+        let replacing = record.rawURL != nil
+        let id = replacing ? record.id : newID()
         let out = LookEngine.shared.render(base, look: look)
         try save(id: id, rawData: nil, rendered: out, look: look,
                  options: OutputOptions(saveRAW: false, saveRendered: true, saveSidecar: true, renderedFormat: format))
+        // Drop a stale rendered file left in the other format.
+        if replacing, let old = record.renderedURL, old.pathExtension.lowercased() != (format == .heic ? "heic" : "jpg") {
+            try? FileManager.default.removeItem(at: old)
+        }
         return id
     }
 

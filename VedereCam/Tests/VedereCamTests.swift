@@ -39,4 +39,35 @@ final class VedereCamTests: XCTestCase {
             XCTAssertEqual(try CubeLUT(url: url).dimension, 32, name)
         }
     }
+
+    private func pixel(_ image: CIImage) -> [UInt8] {
+        var px = [UInt8](repeating: 0, count: 4)
+        LookEngine.shared.context.render(image, toBitmap: &px, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+                                         format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+        return px
+    }
+
+    func testLegacySidecarWithoutNewFieldsDecodes() throws {
+        let json = #"{"name":"Old","exposure":0.5,"contrast":1.1,"saturation":1,"temperatureShift":0,"sharpness":0,"grain":0,"grainSize":1,"lutIntensity":1}"#
+        let look = try JSONDecoder().decode(Look.self, from: Data(json.utf8))
+        XCTAssertEqual(look.name, "Old")
+        XCTAssertEqual(look.strength, 1)
+        XCTAssertTrue(look.mix.isEmpty)
+    }
+
+    func testStrengthZeroReturnsOriginal() {
+        let src = CIImage(color: CIColor(red: 0.8, green: 0.3, blue: 0.2)).cropped(to: CGRect(x: 0, y: 0, width: 4, height: 4))
+        var look = Look.neutral; look.saturation = 0; look.strength = 0
+        XCTAssertEqual(pixel(LookEngine.shared.render(src, look: look)), pixel(src))
+    }
+
+    func testOrangeMixChangesOrangeButNotBlue() {
+        let orange = CIImage(color: CIColor(red: 0.9, green: 0.5, blue: 0.1)).cropped(to: CGRect(x: 0, y: 0, width: 4, height: 4))
+        let blue = CIImage(color: CIColor(red: 0.1, green: 0.2, blue: 0.9)).cropped(to: CGRect(x: 0, y: 0, width: 4, height: 4))
+        var look = Look.neutral
+        look.setChannel(.orange, ChannelMix(hue: 0, saturation: -100, luminance: 0))
+        XCTAssertNotEqual(pixel(LookEngine.shared.render(orange, look: look)), pixel(orange))
+        let b0 = pixel(blue), b1 = pixel(LookEngine.shared.render(blue, look: look))
+        for i in 0..<3 { XCTAssertEqual(Int(b0[i]), Int(b1[i]), accuracy: 3) }
+    }
 }

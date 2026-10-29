@@ -1,4 +1,5 @@
 import SwiftUI
+import ImageIO
 import UniformTypeIdentifiers
 
 struct GalleryView: View {
@@ -13,7 +14,7 @@ struct GalleryView: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 2) {
                     ForEach(model.records) { rec in
-                        Thumbnail(url: rec.thumbnailSource)
+                        PhotoImage(url: rec.thumbnailSource, maxPixel: 300, square: true)
                             .overlay(alignment: .bottomTrailing) {
                                 if rec.rawURL != nil { Text("RAW").font(.system(size: 9, weight: .bold)).padding(3).background(.black.opacity(0.6)).foregroundStyle(.white) }
                             }
@@ -27,65 +28,124 @@ struct GalleryView: View {
                 for url in (try? result.get()) ?? [] { try? Storage.importFile(url) }
                 model.reload()
             }
-            .sheet(item: $selected) { rec in PhotoDetail(record: rec).environmentObject(model) }
+            .sheet(item: $selected) { rec in PhotoDetail(initial: rec).environmentObject(model) }
             .onAppear { model.reload() }
         }
     }
 }
 
-struct Thumbnail: View {
-    let url: URL?
-    var body: some View {
-        Color.gray.opacity(0.2).aspectRatio(1, contentMode: .fit)
-            .overlay { if let img = load() { Image(uiImage: img).resizable().scaledToFill() } }
-            .clipped()
+/// Downsampled, cached image loading via ImageIO. Avoids decoding full RAW files on the main thread.
+enum ImageLoader {
+    private static let cache = NSCache<NSString, UIImage>()
+
+    static func key(_ url: URL, _ maxPixel: Int) -> String {
+        let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)?.timeIntervalSince1970 ?? 0
+        return "\(url.path)|\(date)|\(maxPixel)"
     }
 
-    private func load() -> UIImage? {
-        guard let url else { return nil }
-        if url.pathExtension.lowercased() == "dng" {
-            guard let ci = CIRAWFilter(imageURL: url)?.outputImage,
-                  let cg = LookEngine.shared.context.createCGImage(ci, from: ci.extent) else { return nil }
-            return UIImage(cgImage: cg)
+    static func load(_ url: URL, maxPixel: Int) async -> UIImage? {
+        let k = key(url, maxPixel) as NSString
+        if let hit = cache.object(forKey: k) { return hit }
+        let image: UIImage? = await Task.detached(priority: .utility) {
+            guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+            let opts: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageIfAbsent: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+                kCGImageSourceCreateThumbnailWithTransform: true
+            ]
+            return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary).map { UIImage(cgImage: $0) }
+        }.value
+        if let image { cache.setObject(image, forKey: k) }
+        return image
+    }
+}
+
+struct PhotoImage: View {
+    let url: URL?
+    let maxPixel: Int
+    let square: Bool
+    @State private var image: UIImage?
+
+    var body: some View {
+        content
+            .task(id: url.map { ImageLoader.key($0, maxPixel) } ?? "") {
+                guard let url else { image = nil; return }
+                image = await ImageLoader.load(url, maxPixel: maxPixel)
+            }
+    }
+
+    @ViewBuilder private var content: some View {
+        if square {
+            Color.gray.opacity(0.2).aspectRatio(1, contentMode: .fit)
+                .overlay { if let image { Image(uiImage: image).resizable().scaledToFill() } }
+                .clipped()
+        } else if let image {
+            Image(uiImage: image).resizable().scaledToFit()
+        } else {
+            Color.gray.opacity(0.2)
         }
-        return UIImage(contentsOfFile: url.path)
     }
 }
 
 struct PhotoDetail: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
-    let record: PhotoRecord
+    let initial: PhotoRecord
     @State private var showOriginal = false
     @State private var share: URL?
     @State private var confirmDeleteOriginal = false
+    @State private var appliedLook: String?
+    @State private var message: String?
+
+    private var record: PhotoRecord { model.records.first { $0.id == initial.id } ?? initial }
 
     var body: some View {
         NavigationStack {
-            VStack {
-                Thumbnail(url: showOriginal ? (record.rawURL ?? record.renderedURL) : (record.renderedURL ?? record.rawURL))
-                    .aspectRatio(contentMode: .fit)
+            VStack(spacing: 8) {
+                PhotoImage(url: showOriginal ? (record.rawURL ?? record.renderedURL) : (record.renderedURL ?? record.rawURL),
+                           maxPixel: 2400, square: false)
                 if record.rawURL != nil && record.renderedURL != nil {
                     Picker("", selection: $showOriginal) { Text("Rendered").tag(false); Text("Original").tag(true) }
-                        .pickerStyle(.segmented).padding()
+                        .pickerStyle(.segmented).padding(.horizontal)
                 }
-                Button("Re-render with current look (\(model.selectedLook.name))") {
-                    _ = try? Storage.rerender(record, look: model.selectedLook, format: model.options.renderedFormat)
-                    model.reload()
-                }.buttonStyle(.bordered)
+                // One-tap preset picker: re-renders from the original without touching it.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(model.looks) { look in
+                            Button(look.name) { apply(look) }
+                                .buttonStyle(.bordered)
+                                .tint(look.name == appliedLook ? .yellow : .gray)
+                        }
+                    }.padding(.horizontal)
+                }
+                if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
                 HStack {
                     Button("Export") { share = (showOriginal ? record.rawURL : record.renderedURL) ?? record.rawURL ?? record.renderedURL }
                     Button("Delete rendered", role: .destructive) { Storage.delete(record, includingOriginal: false); model.reload(); dismiss() }
                     if record.rawURL != nil {
                         Button("Delete original", role: .destructive) { confirmDeleteOriginal = true }
                     }
-                }.padding()
+                }.padding(.bottom)
             }
             .navigationTitle(record.id).navigationBarTitleDisplayMode(.inline)
+            .onAppear { appliedLook = Storage.loadLook(for: record)?.name }
             .sheet(item: $share) { ShareSheet(items: [$0]) }
             .confirmationDialog("Delete the original permanently?", isPresented: $confirmDeleteOriginal, titleVisibility: .visible) {
                 Button("Delete everything", role: .destructive) { Storage.delete(record, includingOriginal: true); model.reload(); dismiss() }
             }
+        }
+    }
+
+    private func apply(_ look: Look) {
+        do {
+            let hadRAW = record.rawURL != nil
+            try Storage.rerender(record, look: look, format: model.options.renderedFormat)
+            model.reload()
+            appliedLook = look.name
+            message = hadRAW ? nil : "Saved as a new copy (no original to re-render from)."
+            showOriginal = false
+        } catch {
+            message = "Couldn't apply look: \(error.localizedDescription)"
         }
     }
 }
