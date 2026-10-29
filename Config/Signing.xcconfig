@@ -1,0 +1,3 @@
+// Shared signing config. Your personal team goes in Config/Local.xcconfig (git-ignored).
+CODE_SIGN_STYLE = Automatic
+#include? "Local.xcconfig"

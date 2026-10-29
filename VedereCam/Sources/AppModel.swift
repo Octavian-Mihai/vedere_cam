@@ -3,7 +3,9 @@ import SwiftUI
 /// Shared app state: selected look, saved looks, output options, library records.
 final class AppModel: ObservableObject {
     @Published var looks: [Look] = Look.builtIn
-    @Published var selectedLookID: UUID = Look.neutral.id
+    @Published var selectedLookID: UUID = Look.neutral.id {
+        didSet { UserDefaults.standard.set(selectedLook.name, forKey: "lastLookName") }
+    }
     @Published var options: OutputOptions { didSet { persistOptions() } }
     @Published var records: [PhotoRecord] = []
 
@@ -17,7 +19,9 @@ final class AppModel: ObservableObject {
     init() {
         if let d = UserDefaults.standard.data(forKey: "options"),
            let o = try? JSONDecoder().decode(OutputOptions.self, from: d) { options = o } else { options = OutputOptions() }
-        selectedLookID = looks.first?.id ?? Look.neutral.id
+        let remember = UserDefaults.standard.object(forKey: "rememberLastLook") as? Bool ?? true
+        let last = UserDefaults.standard.string(forKey: "lastLookName")
+        selectedLookID = (remember ? looks.first { $0.name == last }?.id : nil) ?? looks.first?.id ?? Look.neutral.id
         reload()
     }
 

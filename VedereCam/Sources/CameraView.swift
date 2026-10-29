@@ -4,6 +4,8 @@ struct CameraView: View {
     @EnvironmentObject var model: AppModel
     @StateObject private var camera = CaptureService()
     @State private var showEditor = false
+    @AppStorage("showGrid") private var showGrid = true
+    @AppStorage("shutterHaptic") private var shutterHaptic = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,6 +16,7 @@ struct CameraView: View {
                 } else {
                     Text("Camera preview unavailable").foregroundStyle(.secondary)
                 }
+                if showGrid { GridOverlay().stroke(.white.opacity(0.35), lineWidth: 0.5) }
                 VStack {
                     if let err = camera.lastError {
                         Text(err).font(.caption).padding(6).background(.red.opacity(0.7), in: Capsule())
@@ -47,8 +50,18 @@ struct CameraView: View {
                     }
                 }.padding(.horizontal)
             }
-            .padding(.vertical, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 4)
             .background(Color.black)
+
+            // What the selected look does, in a line or two.
+            Text(model.selectedLook.note)
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.bottom, 6)
+                .background(Color.black)
 
             Spacer(minLength: 0)
 
@@ -59,6 +72,7 @@ struct CameraView: View {
                 }
                 Spacer()
                 Button {
+                    if shutterHaptic { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
                     camera.capture { model.reload() }
                 } label: {
                     Circle().strokeBorder(.white, lineWidth: 4)
@@ -91,5 +105,18 @@ struct CameraView: View {
     private func sync() {
         camera.look = model.selectedLook
         camera.options = model.options
+    }
+}
+
+/// Rule-of-thirds grid.
+struct GridOverlay: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        for i in 1...2 {
+            let x = rect.width * CGFloat(i) / 3, y = rect.height * CGFloat(i) / 3
+            p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: rect.height))
+            p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: rect.width, y: y))
+        }
+        return p
     }
 }

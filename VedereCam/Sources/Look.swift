@@ -33,6 +33,7 @@ struct ChannelMix: Codable, Equatable {
 struct Look: Codable, Equatable, Identifiable {
     var id = UUID()
     var name: String
+    var note: String = ""             // short description shown in the UI
     // Lightness
     var exposure: Double = 0          // EV
     var contrast: Double = 1          // 1 = neutral
@@ -52,24 +53,25 @@ struct Look: Codable, Equatable, Identifiable {
     var lutIntensity: Double = 1
     var strength: Double = 1          // 0 = original image, 1 = full look
 
-    static let neutral = Look(name: "Neutral")
+    static let neutral = Look(name: "Neutral", note: "No color grade: your RAW developed cleanly. Use the Strength and editor sliders to build your own look.")
 
-    /// Bundled looks from the No Fusion LUT pack, grouped by film family.
+    /// Bundled looks from the No Fusion LUT pack. Names come from the pack's file names and the notes are
+    /// inspired-by summaries backed by measuring each LUT (contrast, saturation, color cast, lifted blacks).
     static let builtIn: [Look] = [
         .neutral,
-        Look(name: "Provia 100F", lutFilename: "FProvia100F.cube"),
-        Look(name: "Fuji 400H", lutFilename: "F400H.cube"),
-        Look(name: "Fuji Sol 100", lutFilename: "FSol100.cube"),
-        Look(name: "Kodachrome", lutFilename: "KCHROME.cube"),
-        Look(name: "Ektar 100", lutFilename: "KEktr100.cube"),
-        Look(name: "Gold 200", lutFilename: "KG200.cube"),
-        Look(name: "Gold 200 P1", lutFilename: "KG200P1.cube"),
-        Look(name: "Portra 160", lutFilename: "KP160.cube"),
-        Look(name: "Portra 400", lutFilename: "KP400.cube"),
-        Look(name: "Portra 800", lutFilename: "KP800.cube"),
-        Look(name: "Agfa Ultra 100", lutFilename: "AgU100.cube"),
-        Look(name: "L100", lutFilename: "L100.cube"),
-        Look(name: "Opti Clr 100", lutFilename: "OptiClr100.cube")
+        Look(name: "Provia 100F", note: "Closest to true color. Slight warmth, near-full saturation and gentle contrast. A safe all-rounder for landscapes and travel.", lutFilename: "FProvia100F.cube"),
+        Look(name: "Fuji 400H", note: "Soft and airy. Lifted shadows and clearly muted, pastel color (about half the saturation) with light skin tones. Good for portraits and overcast days.", lutFilename: "F400H.cube"),
+        Look(name: "Fuji Sol 100", note: "Warm, faded and slightly low in contrast, with lifted blacks and bright midtones. A sunny, nostalgic look.", lutFilename: "FSol100.cube"),
+        Look(name: "Kodachrome", note: "Classic slide look: warm reds, rich pinkish skin tones, mild fade in the blacks. Works for people and street scenes.", lutFilename: "KCHROME.cube"),
+        Look(name: "Ektar 100", note: "The punchiest and the only one with no warm cast: boosted saturation, deeper midtones, soft highlights. Best for vivid landscapes and bright color.", lutFilename: "KEktr100.cube"),
+        Look(name: "Gold 200", note: "Strong golden-yellow warmth with the highest contrast of the warm looks. Everyday snapshots and golden-hour light.", lutFilename: "KG200.cube"),
+        Look(name: "Gold 200 P1", note: "A paler, dreamier take on Gold: very bright, soft contrast and gently warm. Summery, hazy scenes.", lutFilename: "KG200P1.cube"),
+        Look(name: "Portra 160", note: "The softest of the set: muted color, low contrast, lifted blacks. Delicate pastel portraits in good light.", lutFilename: "KP160.cube"),
+        Look(name: "Portra 400", note: "Natural, muted pastels with warm, soft skin tones. A versatile portrait and everyday look.", lutFilename: "KP400.cube"),
+        Look(name: "Portra 800", note: "Low contrast with a bit more color than Portra 400. Lifted shadows give a moody low-light feel.", lutFilename: "KP800.cube"),
+        Look(name: "Agfa Ultra 100", note: "Deepest blacks of the set, fairly contrasty with a warm tone. Punchy retro color.", lutFilename: "AgU100.cube"),
+        Look(name: "L100", note: "Clean and lightly warm with near-full saturation and some punch. A neutral everyday grade.", lutFilename: "L100.cube"),
+        Look(name: "Opti Clr 100", note: "Restrained color with a slightly green-neutral tint and darker midtones. A clear, documentary feel.", lutFilename: "OptiClr100.cube")
     ]
 
     func channel(_ color: MixColor) -> ChannelMix { mix[color.rawValue] ?? ChannelMix() }
@@ -85,6 +87,7 @@ extension Look {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         var l = Look(name: try c.decodeIfPresent(String.self, forKey: .name) ?? "Look")
         l.id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        l.note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         l.exposure = try c.decodeIfPresent(Double.self, forKey: .exposure) ?? 0
         l.contrast = try c.decodeIfPresent(Double.self, forKey: .contrast) ?? 1
         l.highlights = try c.decodeIfPresent(Double.self, forKey: .highlights) ?? 0

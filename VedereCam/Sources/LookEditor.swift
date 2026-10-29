@@ -21,6 +21,9 @@ struct LookEditor: View {
             Form {
                 Section {
                     TextField("Name", text: bind(\.name))
+                    if !model.selectedLook.note.isEmpty {
+                        Text(model.selectedLook.note).font(.footnote).foregroundStyle(.secondary)
+                    }
                     slider("Strength", bind(\.strength), 0...1)
                     Picker("", selection: $tab) { ForEach(Tab.allCases) { Text($0.rawValue).tag($0) } }
                         .pickerStyle(.segmented)
@@ -138,7 +141,7 @@ struct LookEditor: View {
 
     /// Resets edits but keeps the look's identity, name and LUT.
     private func resetLook() {
-        var l = Look(name: model.selectedLook.name, lutFilename: model.selectedLook.lutFilename)
+        var l = Look(name: model.selectedLook.name, note: model.selectedLook.note, lutFilename: model.selectedLook.lutFilename)
         l.id = model.selectedLook.id
         model.selectedLook = l
     }
