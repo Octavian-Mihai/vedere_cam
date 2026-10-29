@@ -72,7 +72,9 @@ final class LookEngine {
 
     private func loadLUT(_ name: String) -> CubeLUT? {
         if let c = lutCache[name] { return c }
-        guard let lut = try? CubeLUT(url: Storage.lutDirectory.appendingPathComponent(name)) else { return nil }
+        let bundled = Bundle.main.url(forResource: (name as NSString).deletingPathExtension, withExtension: "cube")
+        let url = bundled ?? Storage.lutDirectory.appendingPathComponent(name)
+        guard let lut = try? CubeLUT(url: url) else { return nil }
         lutCache[name] = lut
         return lut
     }

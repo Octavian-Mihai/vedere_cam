@@ -10,7 +10,10 @@ targets:
   VedereCam:
     type: application
     platform: iOS
-    sources: [VedereCam/Sources]
+    sources: [VedereCam/Sources, VedereCam/Assets.xcassets, VedereCam/Resources]
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: VedereCam/Info.plist
       properties:

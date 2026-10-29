@@ -16,12 +16,12 @@ struct Look: Codable, Equatable, Identifiable {
 
     static let neutral = Look(name: "Neutral")
 
+    /// Bundled looks. Fuji-style LUTs for now; more families to come.
     static let builtIn: [Look] = [
         .neutral,
-        Look(name: "Film Warm", contrast: 1.08, saturation: 1.1, temperatureShift: 400, grain: 0.35, grainSize: 1.2),
-        Look(name: "Crisp", contrast: 1.15, saturation: 1.05, sharpness: 0.8),
-        Look(name: "Mono Grain", contrast: 1.2, saturation: 0, grain: 0.5, grainSize: 1.5),
-        Look(name: "Soft Fade", exposure: 0.2, contrast: 0.88, saturation: 0.9, grain: 0.15)
+        Look(name: "Provia 100F", lutFilename: "FProvia100F.cube"),
+        Look(name: "Fuji 400H", lutFilename: "F400H.cube"),
+        Look(name: "Fuji Sol 100", lutFilename: "FSol100.cube")
     ]
 }
 

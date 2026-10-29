@@ -31,4 +31,12 @@ final class VedereCamTests: XCTestCase {
         XCTAssertEqual(Int(px[0]), Int(px[1]), accuracy: 3)
         XCTAssertEqual(Int(px[1]), Int(px[2]), accuracy: 3)
     }
+
+    func testBundledLooksHaveLoadableLUTs() throws {
+        for look in Look.builtIn {
+            guard let name = look.lutFilename else { continue }
+            let url = try XCTUnwrap(Bundle.main.url(forResource: (name as NSString).deletingPathExtension, withExtension: "cube"), name)
+            XCTAssertEqual(try CubeLUT(url: url).dimension, 32, name)
+        }
+    }
 }
